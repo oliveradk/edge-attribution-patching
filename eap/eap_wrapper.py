@@ -104,8 +104,8 @@ def EAP_downstream_patching_hook(
 def EAP(
     model: HookedTransformer,
     clean_tokens: Int[Tensor, "batch_size seq_len"],
-    corrupted_tokens: Int[Tensor, "batch_size seq_len"],
     metric: Callable,
+    corrupted_tokens: Int[Tensor, "batch_size seq_len"]=None,
     upstream_nodes: List[str]=None,
     downstream_nodes: List[str]=None,
     batch_size: int=1,
@@ -113,7 +113,8 @@ def EAP(
 
     graph = EAPGraph(model.cfg, upstream_nodes, downstream_nodes)
 
-    assert clean_tokens.shape == corrupted_tokens.shape, "Shape mismatch between clean and corrupted tokens"
+    if corrupted_tokens is not None:
+        assert clean_tokens.shape == corrupted_tokens.shape, "Shape mismatch between clean and corrupted tokens"
     num_prompts, seq_len = clean_tokens.shape[0], clean_tokens.shape[1]
 
     assert num_prompts % batch_size == 0, "Number of prompts must be divisible by batch size"
@@ -151,13 +152,13 @@ def EAP(
 
     for idx in tqdm(range(0, num_prompts, batch_size)):
         # we first perform a forward pass on the corrupted input 
-        model.add_hook(upstream_hook_filter, corruped_upstream_hook_fn, "fwd")
-
-        # we don't need gradients for this forward pass
-        # we'll take the gradients when we perform the forward pass on the clean input
-        with torch.no_grad(): 
-            corrupted_tokens = corrupted_tokens.to(model.cfg.device)
-            model(corrupted_tokens[idx:idx+batch_size], return_type=None)        
+        if corrupted_tokens is not None:
+            model.add_hook(upstream_hook_filter, corruped_upstream_hook_fn, "fwd")
+            # we don't need gradients for this forward pass
+            # we'll take the gradients when we perform the forward pass on the clean input
+            with torch.no_grad(): 
+                corrupted_tokens = corrupted_tokens.to(model.cfg.device)
+                model(corrupted_tokens[idx:idx+batch_size], return_type=None)        
 
         # now we perform a forward and backward pass on the clean input
         model.reset_hooks()
