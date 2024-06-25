@@ -109,9 +109,10 @@ def EAP(
     upstream_nodes: List[str]=None,
     downstream_nodes: List[str]=None,
     batch_size: int=1,
+    verbose: bool=True
 ):
 
-    graph = EAPGraph(model.cfg, upstream_nodes, downstream_nodes)
+    graph = EAPGraph(model.cfg, upstream_nodes, downstream_nodes, verbose=verbose)
 
     if corrupted_tokens is not None:
         assert clean_tokens.shape == corrupted_tokens.shape, "Shape mismatch between clean and corrupted tokens"
@@ -150,7 +151,7 @@ def EAP(
         graph=graph
     )
 
-    for idx in tqdm(range(0, num_prompts, batch_size)):
+    for idx in tqdm(range(0, num_prompts, batch_size), disable=not verbose):
         # we first perform a forward pass on the corrupted input 
         if corrupted_tokens is not None:
             model.add_hook(upstream_hook_filter, corruped_upstream_hook_fn, "fwd")

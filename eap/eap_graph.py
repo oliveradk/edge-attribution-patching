@@ -13,8 +13,9 @@ DEFAULT_GRAPH_PLOT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__))
 
 class EAPGraph:
 
-    def __init__(self, cfg, upstream_nodes=None, downstream_nodes=None, edges=None):
+    def __init__(self, cfg, upstream_nodes=None, downstream_nodes=None, edges=None, verbose=True):
         self.cfg = cfg
+        self.verbose = verbose
 
         self.valid_upstream_node_types = ["resid_pre", "mlp", "head"]
         self.valid_downstream_node_types = ["resid_post", "mlp", "head"]
@@ -152,8 +153,9 @@ class EAPGraph:
         self.n_upstream_nodes = len(self.upstream_nodes)
         self.n_downstream_nodes = len(self.downstream_nodes)
 
-        activations_tensor_in_gb = self.n_upstream_nodes * self.cfg.d_model * self.element_size / 2**30 
-        print(f"Saving activations requires {activations_tensor_in_gb:.4f} GB of memory per token")
+        if self.verbose:
+            activations_tensor_in_gb = self.n_upstream_nodes * self.cfg.d_model * self.element_size / 2**30 
+            print(f"Saving activations requires {activations_tensor_in_gb:.4f} GB of memory per token")
 
     # Given a set of upstream nodes and downstream nodes, this function returns the corresponding hooks
     # to access the activations of these nodes. We return the list of hooks sorted by layer number.
