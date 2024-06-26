@@ -272,22 +272,34 @@ class EAPGraph:
         n=1000,
         threshold=None,
         abs_scores=True,
+        edge_filter=None,
     ):
         assert self.eap_scores is not None, "EAP scores have not been computed yet"
-
+        
+        # filter edges
+        eap_scores = self.eap_scores 
+        if edge_filter is not None:
+            if abs_scores:
+                eap_scores = torch.zeros_like(self.eap_scores)
+            else:
+                eap_scores = -torch.inf * torch.ones_like
+            valid_upstream_idxs = [i for (i, node) in enumerate(self.upstream_nodes) if edge_filter(node)]
+            valid_downstream_idxs = [i for (i, node) in enumerate(self.downstream_nodes) if edge_filter(node)]
+            uu, dd = torch.meshgrid(torch.tensor(valid_upstream_idxs), torch.tensor(valid_downstream_idxs), indexing='ij')
+            eap_scores[uu, dd] = self.eap_scores[uu, dd]
         # get indices of maximum values in 2d tensor
         if abs_scores:
-            top_scores, top_indices = torch.topk(self.eap_scores.flatten().abs(), k=n, dim=0)
+            top_scores, top_indices = torch.topk(eap_scores.flatten().abs(), k=n, dim=0)
         else:
-            top_scores, top_indices = torch.topk(self.eap_scores.flatten(), k=n, dim=0)
+            top_scores, top_indices = torch.topk(eap_scores.flatten(), k=n, dim=0)
 
         top_edges = []
         for i, (abs_score, index) in enumerate(zip(top_scores, top_indices)):
             if threshold is not None and abs_score < threshold:
                 break
 
-            upstream_node_idx, downstream_node_idx = np.unravel_index(index, self.eap_scores.shape)
-            score = self.eap_scores[upstream_node_idx, downstream_node_idx]
+            upstream_node_idx, downstream_node_idx = np.unravel_index(index, eap_scores.shape)
+            score = eap_scores[upstream_node_idx, downstream_node_idx]
 
             top_edges.append((self.upstream_nodes[upstream_node_idx], self.downstream_nodes[downstream_node_idx], score.item()))
 
