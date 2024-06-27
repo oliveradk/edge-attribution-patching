@@ -13,9 +13,22 @@ DEFAULT_GRAPH_PLOT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__))
 
 class EAPGraph:
 
-    def __init__(self, cfg, upstream_nodes=None, downstream_nodes=None, edges=None, verbose=True):
+    def __init__(
+        self, 
+        cfg, 
+        upstream_nodes=None, 
+        downstream_nodes=None, 
+        edges=None, 
+        aggregate_batch=True, 
+        batch_size=None,
+        verbose=True
+    ):
         self.cfg = cfg
         self.verbose = verbose
+        
+        self.aggregate_batch = aggregate_batch
+        self.batch_size = batch_size
+        
 
         self.valid_upstream_node_types = ["resid_pre", "mlp", "head"]
         self.valid_downstream_node_types = ["resid_post", "mlp", "head"]
@@ -60,8 +73,12 @@ class EAPGraph:
         self.setup_graph_from_nodes(upstream_nodes, downstream_nodes)
 
         # We will create these tensors when needed
-        self.eap_scores: Float[Tensor, "n_upstream_nodes n_downstream_nodes"] = None
-        self.adj_matrix: Float[Tensor, "n_upstream_nodes n_downstream_nodes"] = None
+        if self.aggregate_batch:
+            self.eap_scores: Float[Tensor, "n_upstream_nodes n_downstream_nodes"] = None
+            self.adj_matrix: Float[Tensor, "n_upstream_nodes n_downstream_nodes"] = None
+        else:
+            self.eap_scores: Float[Tensor, "batch_size seq_len n_upstream_nodes n_downstream_nodes"] = None
+            self.adj_matrix: Float[Tensor, "batch_size seq_len n_upstream_nodes n_downstream_nodes"] = None
 
     def setup_graph_from_nodes(self, upstream_nodes=None, downstream_nodes=None):
         # if no nodes are specified, we assume that all of them will be used
@@ -261,11 +278,16 @@ class EAPGraph:
         elif hook_name in self.downstream_hook_slice:
             return self.downstream_hook_slice[hook_name]
 
+    def set_batch_size(self, batch_size):
+        self.batch_size = batch_size
+
     def reset_scores(self):
-        self.eap_scores = torch.zeros(
-            (self.n_upstream_nodes, self.n_downstream_nodes),
-            device=self.cfg.device
-        )
+        if self.aggregate_batch:
+            scores_shape = (self.n_upstream_nodes, self.n_downstream_nodes)
+        else:
+            assert self.batch_size is not None, "Batch size must be specified when not aggregating across batches, use set_batch_size()"
+            scores_shape = (self.batch_size, self.n_upstream_nodes, self.n_downstream_nodes)
+        self.eap_scores = torch.zeros(scores_shape, device=self.cfg.device)
 
     def top_edges(
         self,
@@ -274,6 +296,7 @@ class EAPGraph:
         abs_scores=True,
         edge_filter=None,
     ):
+        assert self.aggregate_batch, "Top edges can only be computed when aggregating across batches"
         assert self.eap_scores is not None, "EAP scores have not been computed yet"
         
         # filter edges
@@ -310,7 +333,7 @@ class EAPGraph:
         threshold=None,
         abs_scores=True
     ):
-
+        assert self.aggregate_batch, "Top edges can only be computed when aggregating across batches"
         assert self.eap_scores is not None, "EAP scores have not been computed yet"
 
         top_edges = self.top_edges(threshold=threshold, abs_scores=abs_scores)

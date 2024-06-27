@@ -48,7 +48,8 @@ def EAP_clean_backward_hook(
     grad: Union[Float[Tensor, "batch_size seq_len n_heads d_model"], Float[Tensor, "batch_size seq_len d_model"]],
     hook: HookPoint,
     upstream_activations_difference: Float[Tensor, "batch_size seq_len n_upstream_nodes d_model"],
-    graph: EAPGraph
+    graph: EAPGraph, 
+    aggregate_batch: bool=True
 ):
     hook_slice = graph.get_hook_slice(hook.name)
 
@@ -66,9 +67,14 @@ def EAP_clean_backward_hook(
     result = torch.matmul(
         upstream_activations_difference[:, :, earlier_upstream_nodes_slice],
         grad_expanded.transpose(-1, -2)
-    ).sum(dim=0).sum(dim=0) # we sum over the batch_size and seq_len dimensions
-
-    graph.eap_scores[earlier_upstream_nodes_slice, hook_slice] += result 
+    ).sum(dim=1) # sum over seq_len dimension
+    if aggregate_batch:
+        result = result.sum(dim=0) # sum over the batch size
+    #TODO: keep batch (don't know what I was doing before...)
+    if aggregate_batch:
+        graph.eap_scores[earlier_upstream_nodes_slice, hook_slice] += result 
+    else:
+        graph.eap_scores[:, earlier_upstream_nodes_slice, hook_slice] += result
 
 def EAP_downstream_patching_hook(
     activations: Union[Float[Tensor, "batch_size seq_len n_heads d_model"], Float[Tensor, "batch_size seq_len d_model"]],
