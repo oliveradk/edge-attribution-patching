@@ -5,6 +5,7 @@ Use the `minimal-implementation` branch for an easy-to-use version of edge attri
 
 
 This repository is currently under development. It is built on top of https://github.com/neelnanda-io/TransformerLens which we may merge into eventually. 
+All code in this minimal_implementation branch has been created by [Oscar Balcells](https://github.com/obalcells).
 
 Please cite this work as:
 ```
