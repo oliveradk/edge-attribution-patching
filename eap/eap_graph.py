@@ -20,15 +20,12 @@ class EAPGraph:
         downstream_nodes=None, 
         edges=None, 
         aggregate_batch=True, 
-        batch_size=None,
         verbose=True
     ):
         self.cfg = cfg
         self.verbose = verbose
         
         self.aggregate_batch = aggregate_batch
-        self.batch_size = batch_size
-        
 
         self.valid_upstream_node_types = ["resid_pre", "mlp", "head"]
         self.valid_downstream_node_types = ["resid_post", "mlp", "head"]
@@ -278,16 +275,14 @@ class EAPGraph:
         elif hook_name in self.downstream_hook_slice:
             return self.downstream_hook_slice[hook_name]
 
-    def set_batch_size(self, batch_size):
-        self.batch_size = batch_size
 
-    def reset_scores(self):
+    def reset_scores(self, batch_size=None):
         if self.aggregate_batch:
             scores_shape = (self.n_upstream_nodes, self.n_downstream_nodes)
         else:
-            assert self.batch_size is not None, "Batch size must be specified when not aggregating across batches, use set_batch_size()"
-            scores_shape = (self.batch_size, self.n_upstream_nodes, self.n_downstream_nodes)
+            scores_shape = (batch_size, self.n_upstream_nodes, self.n_downstream_nodes)
         self.eap_scores = torch.zeros(scores_shape, device=self.cfg.device)
+        
 
     def top_edges(
         self,
