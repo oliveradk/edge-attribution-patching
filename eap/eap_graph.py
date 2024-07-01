@@ -343,7 +343,8 @@ class EAPGraph:
         self,
         threshold=None,
         abs_scores=True,
-        fname: str="eap_graph.png"
+        fname: str="eap_graph.png",
+        fdir: str=None
     ):
         import pygraphviz as pgv
 
@@ -425,8 +426,8 @@ class EAPGraph:
                 weight=10,
                 minlen='0.5',
             )
-
-        save_path = os.path.join(DEFAULT_GRAPH_PLOT_DIR, fname)
+        fdir = fdir if fdir is not None else DEFAULT_GRAPH_PLOT_DIR
+        save_path = os.path.join(fdir, fname)
 
         print(f"Saving graph")
         if not fname.endswith(".gv"): # turn the .gv file into a .png file
