@@ -70,7 +70,6 @@ def EAP_clean_backward_hook(
     ).sum(dim=1) # sum over seq_len dimension
     if aggregate_batch:
         result = result.sum(dim=0) # sum over the batch size
-    #TODO: keep batch (don't know what I was doing before...)
     if aggregate_batch:
         graph.eap_scores[earlier_upstream_nodes_slice, hook_slice] += result 
     else:
