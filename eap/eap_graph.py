@@ -282,6 +282,17 @@ class EAPGraph:
         else:
             scores_shape = (batch_size, self.n_upstream_nodes, self.n_downstream_nodes)
         self.eap_scores = torch.zeros(scores_shape, device=self.cfg.device)
+    
+    def save_scores(self, path: str):
+        if self.aggregate_batch:
+            # save scores to pth file 
+            torch.save(self.eap_scores, path)
+    
+    def load_scores(self, path: str):
+        if self.aggregate_batch:
+            # load scores from pth file 
+            self.eap_scores = torch.load(path)
+
         
 
     def top_edges(
